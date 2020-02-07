@@ -1,0 +1,16 @@
+{
+    "name": "super-chat",
+    "version": "0.1.0",
+    "dependecies": {
+        "express": "~3.3.4",
+        "socket.io": "~1.2.1",
+        "ent": "~0.1.0"
+    },
+    "author": "Unknow",
+    "description": "A real-time chat with socket.io",
+    "dependencies": {
+        "ent": "^2.2.0",
+        "express": "^4.17.1",
+        "socket.io": "^2.3.0"
+    }
+}

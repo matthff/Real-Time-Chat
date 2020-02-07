@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Real-time Super Chat!</title>
+        <style>
+            #zone_chat strong {
+                color: white;
+                background-color: black;
+                padding: 2px;
+            }
+        </style>
+    </head>
+ 
+    <body>
+        <h1>Real-time Super Chat!</h1>
+
+        <form action="/" method="post" id="chat_form">
+            <input type="text" name="message" id="message" placeholder="Your message..." size="50" autofocus />
+            <input type="submit" id="send_message" value="Send" />
+        </form>
+
+        <form id="user_form">
+            <input type="text" name="new_username" id="new_user" placeholder="Your new username here.." size="50" autofocus />
+            <input type="submit" id="change_user" value="Change" />
+        </form>
+
+        <div>
+            <audio id="audio" src="/alert.mp3" autoplay="false"></audio>
+            <button type="button" onclick="socket.emit('audio_alert', username);">Alert Users</button>
+        </div>
+        
+        <div style="text-align:right; margin:0px auto 0px auto;">
+            <h3>Currently Online</h3>
+            <ul id="users_online_list">
+            </ul>
+        </div>
+
+        <section id="chat_zone">
+            
+        </section>
+        
+        <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+
+            // Connecting to socket.io
+            var socket = io.connect('http://localhost:8080');
+
+            var clientRenderList = [];
+
+            // The username is requested, sent to the server and displayed in the title
+            var username = prompt('What\'s your username?');
+            while(username == ''){
+                alert('Por favor, digite um username válido e não vazio');
+                var username = prompt('What\'s your username?');
+            }
+            socket.emit('new_client', username);
+            
+            document.title = username + ' - ' + "Real-time Super Chat!";
+
+            renderPreviousMessages();
+            renderInUsersOnlineList();
+
+            window.addEventListener('beforeunload', function(event){
+                event.preventDefault();
+                socket.emit('disconnect');
+                event.returnValue = '';
+            });
+
+            // When a message is received it's inserted in the page
+            socket.on('message', function(data) {
+                insertMessage(data.username, data.message)
+            })
+
+            // When a new client connects, the information is displayed
+            socket.on('new_client', function(username) {
+                $('#chat_zone').prepend('<p><em>' + username + ' has joined the chat!</em></p>');
+                insertUserInOnlineList(username);
+            })
+            
+            //Client logoff
+            socket.on('client_disconnected', function(username) {
+                $('#chat_zone').prepend('<p><em>' + username + ' left the chat!</em></p>');
+                removeUserInOnlineList(username);
+            })
+
+            //Notification for changing username
+            socket.on('changed_user', function(newUsername, tempUser) {
+                $('#chat_zone').prepend('<p><em>' + tempUser + ' has changed the username to: ' + newUsername + '</em></p>');
+                changeUserInOnlineList(tempUser, newUsername);
+            })
+
+            socket.on('audio_alert', function(username){
+                $('#chat_zone').prepend('<p><strong>' + username + '</strong> ' + " is asking for you attention!" + '</p>');
+                playSound();
+            })
+
+            socket.on('render_message_action', function(clientsMessagesValues){
+                insertMessage(clientsMessagesValues.username, clientsMessagesValues.message);
+            })
+
+            socket.on('client_array_response', function(clientArray){
+                clientRenderList = clientArray;
+                insertUserOnOnlineListFromStringArray(clientRenderList);
+            })
+
+            // When the form is sent, the message is sent and displayed on the page
+            $('#chat_form').submit(function () {
+                if($('#message').val() == ''){
+                    message = '';
+                }else{
+                    var message = $('#message').val();
+                    socket.emit('message', message); // Sends the message to the others
+                    insertMessage(username, message); // Also displays the message on our page
+                    $('#message').val('').focus(); // Empties the chat form and puts the focus back on it
+                    return false; // Blocks 'classic' sending of the form
+                }  
+            });
+
+            //When the form is sent, the username is sent to the backend and is altered 
+            $('#user_form').submit(function () {
+                if($('#new_user').val() == ''){
+                    username = username;
+                }else{
+                    var newUsername = $('#new_user').val();
+                    username = newUsername;
+                    document.title = username + ' - ' + "Real-time Super Chat!";
+                    socket.emit('new_user', newUsername);
+                    $('#new_user').val('').focus(); 
+                    return false;
+                }  
+            });
+            
+            // Adds a message to the page
+            function insertMessage(username, message) {
+                $('#chat_zone').prepend('<p><strong>' + username + '</strong> ' + message + '</p>');
+            }
+
+            function playSound(){
+                var sound = document.getElementById("audio");
+                sound.Play();
+            }
+
+            //When opening a new tab for a new user, the user can see the previous messages that were sent
+            function renderPreviousMessages(){
+                socket.emit('render_message_call');
+            }
+
+            function renderInUsersOnlineList(){
+                socket.emit('client_array');
+            }
+
+            function insertUserInOnlineList(username){
+                let usersOnlineList = document.getElementById("users_online_list");
+                let li = document.createElement("li");
+                li.appendChild(document.createTextNode(username));
+                li.setAttribute("id", "id_" + username);
+                usersOnlineList.appendChild(li);
+            }
+            function removeUserInOnlineList(username){
+                let usersOnlineList = document.getElementById("users_online_list");
+                let li = document.getElementById("id_" + username);
+                usersOnlineList.removeChild(li);
+            }
+            function changeUserInOnlineList(username, newUsername){
+                removeUserInOnlineList(username);
+                insertUserInOnlineList(newUsername);
+            }
+
+            function insertUserOnOnlineListFromStringArray(stringArray){
+                for(i in stringArray){
+                    let usersOnlineList = document.getElementById("users_online_list");
+                    let li = document.createElement("li");
+                    li.appendChild(document.createTextNode(stringArray[i]));
+                    li.setAttribute("id", "id_" + stringArray[i]);
+                    usersOnlineList.appendChild(li);
+                }     
+            }
+        </script>
+    </body>
+</html>
