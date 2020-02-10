@@ -36,6 +36,7 @@ io.sockets.on('connection', function (socket, username) {
         var i = clientsUsernames.indexOf(socket.username);
         socket.broadcast.emit('client_disconnected', clientsUsernames[i]);
         allClients.delete(socket);
+        removeElementFromArray(clientsUsernames, socket.username);
     })
     //When a user changes the username, notify the chat
     socket.on('new_user', function(newUsername){
@@ -68,3 +69,12 @@ io.sockets.on('connection', function (socket, username) {
 const port = 8080;
 server.listen(port);
 console.log("App listening on port: " + port);
+
+
+function removeElementFromArray(array, element){
+    var elementIndex = array.indexOf(element);
+    while(elementIndex  > -1){
+        array.splice(elementIndex, 1);
+        elementIndex = array.indexOf(element);
+    }
+}
