@@ -47,6 +47,7 @@
             // Connecting to socket.io
             var socket = io.connect('http://localhost:8080');
 
+            // Empty array for rendering the users online via socket
             var clientRenderList = [];
 
             // The username is requested, sent to the server and displayed in the title
@@ -57,8 +58,10 @@
             }
             socket.emit('new_client', username);
             
+            // Change the title according to the current username
             document.title = username + ' - ' + "Real-time Super Chat!";
 
+            // Call the functions to render the previous content
             renderPreviousMessages();
             renderInUsersOnlineList();
 
@@ -71,39 +74,53 @@
             // When a message is received it's inserted in the page
             socket.on('message', function(data) {
                 insertMessage(data.username, data.message)
-            })
+            });
 
             // When a new client connects, the information is displayed
             socket.on('new_client', function(username) {
-                $('#chat_zone').prepend('<p><em>' + username + ' has joined the chat!</em></p>');
+                var newClientWarning = username + ' has joined the chat!';
+                $('#chat_zone').prepend('<p><em>' + newClientWarning +'</em></p>');
+                socket.emit('warning_sender', newClientWarning);
                 insertUserInOnlineList(username);
-            })
+            });
             
-            //Client logoff
+            // Client logoff
             socket.on('client_disconnected', function(username) {
-                $('#chat_zone').prepend('<p><em>' + username + ' left the chat!</em></p>');
+                var clientLogoffWarning = username + ' left the chat!';
+                $('#chat_zone').prepend('<p><em>' + clientLogoffWarning + '</em></p>');
+                socket.emit('warning_sender', clientLogoffWarning);
                 removeUserInOnlineList(username);
-            })
+            });
 
-            //Notification for changing username
+            // Notification for changing username
             socket.on('changed_user', function(newUsername, tempUser) {
-                $('#chat_zone').prepend('<p><em>' + tempUser + ' has changed the username to: ' + newUsername + '</em></p>');
+                var changedUsernameWarning = tempUser + ' has changed the username to: ' + newUsername;
+                $('#chat_zone').prepend('<p><em>' + changedUsernameWarning + '</em></p>');
+                socket.emit('warning_sender', changedUsernameWarning);
                 changeUserInOnlineList(tempUser, newUsername);
-            })
+            });
 
+            //TODO
             socket.on('audio_alert', function(username){
                 $('#chat_zone').prepend('<p><strong>' + username + '</strong> ' + " is asking for you attention!" + '</p>');
                 playSound();
-            })
+            });
 
+            // Render the previous content in the new chat section
             socket.on('render_message_action', function(clientsMessagesValues){
-                insertMessage(clientsMessagesValues.username, clientsMessagesValues.message);
-            })
+                if(typeof(clientsMessagesValues) == "object"){
+                    insertMessage(clientsMessagesValues.username, clientsMessagesValues.message);
+                }
+                if(typeof(clientsMessagesValues) == "string"){
+                    insertWarning(clientsMessagesValues);
+                }
+            });
 
+            // Insert from backend the users online list data
             socket.on('client_array_response', function(clientArray){
                 clientRenderList = clientArray;
                 insertUserOnOnlineListFromStringArray(clientRenderList);
-            })
+            });
 
             // When the form is sent, the message is sent and displayed on the page
             $('#chat_form').submit(function () {
@@ -118,7 +135,7 @@
                 }  
             });
 
-            //When the form is sent, the username is sent to the backend and is altered 
+            // When the form is sent, the username is sent to the backend and is altered 
             $('#user_form').submit(function () {
                 if($('#new_user').val() == ''){
                     username = username;
@@ -137,20 +154,28 @@
                 $('#chat_zone').prepend('<p><strong>' + username + '</strong> ' + message + '</p>');
             }
 
+            // Insert a certain warning on the chat section 
+            function insertWarning(warning){
+                $('#chat_zone').prepend('<p><em>' + warning +'</em></p>');                
+            }
+            
+            //TODO
             function playSound(){
                 var sound = document.getElementById("audio");
                 sound.Play();
             }
 
-            //When opening a new tab for a new user, the user can see the previous messages that were sent
+            // When opening a new tab for a new user, the user can see the previous messages that were sent
             function renderPreviousMessages(){
                 socket.emit('render_message_call');
             }
 
+            // Function for rendering the user online list via socket call
             function renderInUsersOnlineList(){
                 socket.emit('client_array');
             }
 
+            // Insert user on the <ul> list
             function insertUserInOnlineList(username){
                 let usersOnlineList = document.getElementById("users_online_list");
                 let li = document.createElement("li");
@@ -158,16 +183,21 @@
                 li.setAttribute("id", "id_" + username);
                 usersOnlineList.appendChild(li);
             }
+            
+            // Remove user from the <ul> list
             function removeUserInOnlineList(username){
                 let usersOnlineList = document.getElementById("users_online_list");
                 let li = document.getElementById("id_" + username);
                 usersOnlineList.removeChild(li);
             }
+
+            // Alter the username on the <ul> list
             function changeUserInOnlineList(username, newUsername){
                 removeUserInOnlineList(username);
                 insertUserInOnlineList(newUsername);
             }
 
+            // Function is just like the insertUserInOnlineList, just uses arrays instead
             function insertUserOnOnlineListFromStringArray(stringArray){
                 for(i in stringArray){
                     let usersOnlineList = document.getElementById("users_online_list");
